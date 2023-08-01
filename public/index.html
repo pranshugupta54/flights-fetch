@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Flights Search</title>
+  <style>
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #flightResults {
+      margin-top: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #dddddd;
+      text-align: left;
+      padding: 8px;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>Google Flights Search</h1>
+  <form id="flightSearchForm">
+    <label for="departureCity">Departure City:</label>
+    <input type="text" id="departureCity" name="departureCity" list="departureCityList" required>
+    <datalist id="departureCityList"></datalist>
+
+    <label for="arrivalCity">Arrival City:</label>
+    <input type="text" id="arrivalCity" name="arrivalCity" list="arrivalCityList" required>
+    <datalist id="arrivalCityList"></datalist>
+
+    <label for="departureDate">Departure Date:</label>
+    <input type="date" id="departureDate" name="departureDate" required>
+
+    <button type="submit">Search Flights</button>
+  </form>
+
+  <div id="loader" class="loader" style="display: none;"></div>
+  <div id="flightResults"></div>
+
+  <script>
+    const citySuggestions = [
+      { name: "New York", code: "JFK" },
+      { name: "Los Angeles", code: "LAX" },
+      { name: "London", code: "LHR" },
+      { name: "Tokyo", code: "HND" },
+      { name: "Paris", code: "CDG" },
+      { name: "Sydney", code: "SYD" },
+      { name: "Delhi", code: "DEL" },
+      { name: "Mumbai", code: "BOM" },
+      { name: "Bangalore", code: "BLR" },
+      { name: "Chennai", code: "MAA" },
+      { name: "Kolkata", code: "CCU" },
+      { name: "Hyderabad", code: "HYD" },
+      { name: "Ahmedabad", code: "AMD" },
+      { name: "Pune", code: "PNQ" },
+      { name: "Jaipur", code: "JAI" },
+      { name: "Lucknow", code: "LKO" },
+      // Add more city suggestions with their respective IATA codes
+    ];
+
+    const departureCityInput = document.getElementById('departureCity');
+    const arrivalCityInput = document.getElementById('arrivalCity');
+
+    function updateCitySuggestions(inputElement) {
+      const filteredSuggestions = citySuggestions.filter((city) =>
+        city.name.toLowerCase().startsWith(inputElement.value.toLowerCase())
+      );
+
+      const dataListElement = inputElement.nextElementSibling;
+      dataListElement.innerHTML = '';
+
+      filteredSuggestions.forEach((city) => {
+        const optionElement = document.createElement('option');
+        optionElement.value = city.name;
+        dataListElement.appendChild(optionElement);
+      });
+    }
+
+    departureCityInput.addEventListener('input', () => {
+      updateCitySuggestions(departureCityInput);
+    });
+
+    arrivalCityInput.addEventListener('input', () => {
+      updateCitySuggestions(arrivalCityInput);
+    });
+
+    document.getElementById('flightSearchForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const formDataObject = {};
+      formData.forEach((value, key) => {
+        formDataObject[key] = value;
+      });
+
+      const loader = document.getElementById('loader');
+      const flightResultsElement = document.getElementById('flightResults');
+      flightResultsElement.innerHTML = '';
+
+      loader.style.display = 'block';
+
+      try {
+        const response = await fetch('/searchFlights', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formDataObject),
+        });
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok.');
+        }
+
+        const flightData = await response.json();
+        displayFlightResults(flightData);
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        loader.style.display = 'none';
+      }
+    });
+
+    function displayFlightResults(flights) {
+      const flightResultsElement = document.getElementById('flightResults');
+      flightResultsElement.innerHTML = '';
+
+      if (flights.length === 0) {
+        flightResultsElement.textContent = 'No flights found for the selected route and date.';
+        return;
+      }
+
+      const table = document.createElement('table');
+      const headerRow = table.insertRow();
+      const headers = ['Airline', 'Departure Time', 'Arrival Time', 'Price'];
+
+      headers.forEach((headerText) => {
+        const header = document.createElement('th');
+        header.textContent = headerText;
+        headerRow.appendChild(header);
+      });
+
+      flights.forEach((flight) => {
+        const row = table.insertRow();
+        const airlineCell = row.insertCell();
+        const departureTimeCell = row.insertCell();
+        const arrivalTimeCell = row.insertCell();
+        const priceCell = row.insertCell();
+
+        airlineCell.textContent = flight.airline;
+        departureTimeCell.textContent = flight.departureTime;
+        arrivalTimeCell.textContent = flight.arrivalTime;
+        priceCell.textContent = flight.price;
+      });
+
+      flightResultsElement.appendChild(table);
+    }
+  </script>
+</body>
+</html>
